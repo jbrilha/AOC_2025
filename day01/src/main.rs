@@ -1,9 +1,15 @@
-use std::{env, fmt, fs::read_to_string, ops::Sub, str::FromStr};
-use tracing::{error, info, warn};
+use std::{
+    env,
+    fmt::{self},
+    fs::read_to_string,
+    str::FromStr,
+};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 const MAX: isize = 99;
 const MIN: isize = 0;
+const BRUTE_FORCE: bool = false;
 
 #[derive(Debug)]
 enum Direction {
@@ -102,6 +108,28 @@ impl Dial {
         self.last_count = turns;
     }
 
+    fn apply_rotation_bruteforce(&mut self, rotation: &Rotation) {
+        let mut wraps = 0;
+        for _ in 0..rotation.distance {
+            match rotation.direction {
+                Direction::Left => self.turn_left(1),
+                Direction::Right => self.turn_right(1),
+            };
+
+            if self.position == 0 {
+                self.passed_zero += 1;
+                wraps += 1;
+            }
+        }
+
+        self.last_count = wraps;
+        self.wrapped = wraps > 0;
+
+        if self.position == 0 {
+            self.at_zero += 1;
+        }
+    }
+
     fn turn_left(&mut self, rem: isize) -> bool {
         if self.position.saturating_sub(rem) < MIN {
             let delta = rem.saturating_sub(self.position);
@@ -148,7 +176,12 @@ fn main() {
     let mut dial = Dial::new(50);
 
     rotations.iter().for_each(|r| {
-        dial.apply_rotation(r);
+        if BRUTE_FORCE {
+            dial.apply_rotation_bruteforce(r);
+        } else {
+            dial.apply_rotation(r);
+        }
+
         if dial.position != 0 && dial.wrapped {
             info!(
                 "The dial is rotated {} to point at {}; \
@@ -162,9 +195,11 @@ fn main() {
         dial.wrapped = false;
     });
 
+    if !BRUTE_FORCE {
+        dial.passed_zero += dial.at_zero
+    }
     info!("at_zero: \t{} (part1)", dial.at_zero);
-    info!("passed_zero: \t{}", dial.passed_zero);
-    info!("total: \t{} (part2)", dial.passed_zero + dial.at_zero);
+    info!("passed_zero: \t{} (part2)", dial.passed_zero);
 }
 
 #[cfg(test)]
