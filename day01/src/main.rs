@@ -70,39 +70,33 @@ impl Dial {
     }
 
     fn apply_rotation(&mut self, rotation: &Rotation) {
+        let rem = rotation.distance % (MAX + 1);
+
         match rotation.direction {
-            Direction::Left => self.turn_left(rotation.distance),
-            Direction::Right => self.turn_right(rotation.distance),
+            Direction::Left => self.turn_left(rem),
+            Direction::Right => self.turn_right(rem),
+        }
+
+        if self.position == 0 {
+            self.at_zero += 1
         }
     }
 
-    fn turn_left(&mut self, distance: isize) {
-        let rem = distance % (MAX + 1);
-
+    fn turn_left(&mut self, rem: isize) {
         if self.position.saturating_sub(rem) < MIN {
-            let actual = rem.saturating_sub(self.position);
-            self.position = MAX - actual + 1
+            let delta = rem.saturating_sub(self.position);
+            self.position = MAX - delta + 1
         } else {
             self.position = self.position.saturating_sub(rem)
         }
-
-        if self.position == 0 {
-            self.at_zero += 1
-        }
     }
 
-    fn turn_right(&mut self, distance: isize) {
-        let rem = distance % (MAX + 1);
-
+    fn turn_right(&mut self, rem: isize) {
         if self.position.saturating_add(rem) > MAX {
-            let actual = rem.saturating_sub(MAX - self.position);
-            self.position = MIN + actual - 1
+            let delta = rem.saturating_sub(MAX - self.position);
+            self.position = MIN + delta - 1
         } else {
             self.position = self.position.saturating_add(rem)
-        }
-
-        if self.position == 0 {
-            self.at_zero += 1
         }
     }
 }
@@ -115,7 +109,16 @@ fn read_rotations(filename: &str) -> Vec<Rotation> {
         .collect()
 }
 
+use tracing::{error, info, warn};
+use tracing_subscriber::EnvFilter;
+
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug")),
+        )
+        .init();
+
     let args: Vec<String> = env::args().collect();
     let file = &args[1];
 
@@ -125,10 +128,10 @@ fn main() {
 
     rotations.iter().for_each(|r| {
         dial.apply_rotation(r);
-        println!("The dial is rotated {} to point at {}", r, dial.position)
+        info!("The dial is rotated {} to point at {}", r, dial.position)
     });
 
-    println!("{}", dial.at_zero);
+    info!("{}", dial.at_zero);
 }
 
 #[cfg(test)]
