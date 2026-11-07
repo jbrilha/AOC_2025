@@ -1,4 +1,6 @@
-use std::{env, fmt, fs::read_to_string, str::FromStr};
+use std::{env, fmt, fs::read_to_string, ops::Sub, str::FromStr};
+use tracing::{error, info, warn};
+use tracing_subscriber::EnvFilter;
 
 const MAX: isize = 99;
 const MIN: isize = 0;
@@ -58,7 +60,10 @@ impl fmt::Display for Rotation {
 
 struct Dial {
     pub position: isize,
-    pub at_zero: usize,
+    pub at_zero: isize,
+    pub passed_zero: isize,
+    pub last_count: isize,
+    pub wrapped: bool,
 }
 
 impl Dial {
@@ -66,37 +71,56 @@ impl Dial {
         Self {
             position,
             at_zero: 0,
+            passed_zero: 0,
+            last_count: 0,
+            wrapped: false,
         }
     }
 
     fn apply_rotation(&mut self, rotation: &Rotation) {
-        let rem = rotation.distance % (MAX + 1);
+        let was_zero = self.position == 0;
+        let rem = rotation.distance.rem_euclid(MAX + 1);
+        let mut turns = rotation.distance.div_euclid(MAX + 1);
 
-        match rotation.direction {
+        self.wrapped = match rotation.direction {
             Direction::Left => self.turn_left(rem),
             Direction::Right => self.turn_right(rem),
-        }
+        } && !was_zero;
 
         if self.position == 0 {
-            self.at_zero += 1
+            self.at_zero += 1;
+            if turns >= 1 {
+                self.passed_zero += turns;
+            }
+        } else if !self.wrapped {
+            self.passed_zero += turns;
+        } else {
+            turns += 1;
+            self.passed_zero += turns;
         }
+
+        self.last_count = turns;
     }
 
-    fn turn_left(&mut self, rem: isize) {
+    fn turn_left(&mut self, rem: isize) -> bool {
         if self.position.saturating_sub(rem) < MIN {
             let delta = rem.saturating_sub(self.position);
-            self.position = MAX - delta + 1
+            self.position = MAX - delta + 1;
+            true
         } else {
-            self.position = self.position.saturating_sub(rem)
+            self.position = self.position.saturating_sub(rem);
+            false
         }
     }
 
-    fn turn_right(&mut self, rem: isize) {
+    fn turn_right(&mut self, rem: isize) -> bool {
         if self.position.saturating_add(rem) > MAX {
             let delta = rem.saturating_sub(MAX - self.position);
-            self.position = MIN + delta - 1
+            self.position = MIN + delta - 1;
+            true
         } else {
-            self.position = self.position.saturating_add(rem)
+            self.position = self.position.saturating_add(rem);
+            false
         }
     }
 }
@@ -108,9 +132,6 @@ fn read_rotations(filename: &str) -> Vec<Rotation> {
         .map(|s| Rotation::from_str(s).unwrap())
         .collect()
 }
-
-use tracing::{error, info, warn};
-use tracing_subscriber::EnvFilter;
 
 fn main() {
     tracing_subscriber::fmt()
@@ -128,10 +149,22 @@ fn main() {
 
     rotations.iter().for_each(|r| {
         dial.apply_rotation(r);
-        info!("The dial is rotated {} to point at {}", r, dial.position)
+        if dial.position != 0 && dial.wrapped {
+            info!(
+                "The dial is rotated {} to point at {}; \
+                during this rotation, it points at 0 {} times",
+                r, dial.position, dial.last_count
+            )
+        } else {
+            info!("The dial is rotated {} to point at {}", r, dial.position)
+        }
+
+        dial.wrapped = false;
     });
 
-    info!("{}", dial.at_zero);
+    info!("at_zero: \t{} (part1)", dial.at_zero);
+    info!("passed_zero: \t{}", dial.passed_zero);
+    info!("total: \t{} (part2)", dial.passed_zero + dial.at_zero);
 }
 
 #[cfg(test)]
