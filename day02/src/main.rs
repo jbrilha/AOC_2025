@@ -1,12 +1,13 @@
-use core::num;
 use std::{
+    collections::HashSet,
     env,
     fmt::{self},
     fs::read_to_string,
+    range,
     str::FromStr,
 };
 
-use tracing::info;
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 struct Range {
@@ -15,8 +16,8 @@ struct Range {
 }
 
 impl Range {
-    fn get_valids(&mut self) -> Vec<usize> {
-        let mut valids: Vec<usize> = vec![];
+    fn get_invalids_part1(&mut self) -> Vec<usize> {
+        let mut invalids: Vec<usize> = vec![];
         for i in self.first..=self.last {
             let num_str = i.to_string();
             let len = num_str.len();
@@ -26,10 +27,33 @@ impl Range {
 
             let (first, last) = num_str.split_at(len / 2);
             if first.eq(last) {
-                valids.push(i);
+                invalids.push(i);
             }
         }
-        valids
+        invalids
+    }
+
+    fn get_invalids_part2(&mut self) -> HashSet<usize> {
+        let mut invalids = HashSet::new();
+        for i in self.first..=self.last {
+            let num_str = i.to_string();
+            let len = num_str.len();
+            let mid = len / 2;
+            let mut candidates = vec![];
+            for i in 1..=mid {
+                if len % i == 0 {
+                    candidates.push(i);
+                }
+            }
+            candidates.iter().for_each(|c| {
+                let (first, last) = num_str.split_at(*c);
+                if last.split(first).into_iter().all(|s| s.eq("")) {
+                    invalids.insert(i);
+                    return;
+                }
+            });
+        }
+        invalids
     }
 }
 
@@ -79,10 +103,16 @@ fn main() {
 
     let mut sum = 0;
     ranges.iter_mut().for_each(|r| {
-        r.get_valids().iter().for_each(|v| sum += v);
+        r.get_invalids_part1().iter().for_each(|v| sum += v);
+    });
+    info!("part1: {sum}");
+
+    let mut sum = 0;
+    ranges.iter_mut().for_each(|r| {
+        r.get_invalids_part2().iter().for_each(|v| sum += v);
     });
 
-    info!("{sum}");
+    info!("part2: {sum}");
 }
 
 #[cfg(test)]
