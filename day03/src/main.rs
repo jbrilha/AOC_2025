@@ -9,7 +9,6 @@ use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 struct Bank {
-    pub idxs: (usize, usize),
     pub batteries: Vec<usize>,
     pub joltage: usize,
 }
@@ -35,11 +34,9 @@ impl Bank {
         self.joltage = 0;
         let len = self.batteries.len();
 
-        let mut idxs: Vec<usize> = vec![];
         let mut vals: Vec<usize> = vec![];
 
         let mut need = 12;
-        let (mut cidx, mut cmax) = (len, 0);
 
         let mut skip = 0;
         while need > 0 {
@@ -50,23 +47,13 @@ impl Bank {
                 .rev()
                 .skip(need - 1)
                 .enumerate()
-                .max_by_key(|&(idx, val)| {
-                    if idx < cidx || *val >= cmax {
-                        cmax = *val;
-                        cidx = idx;
-                        *val
-                    } else {
-                        0
-                    }
-                })
+                .max_by_key(|&(_, val)| *val)
                 .unwrap();
 
-            idxs.push(len - (idx + need));
-            vals.push((*max) as usize);
+            vals.push(*max);
 
-            skip = len - (need + cidx) + 1;
+            skip = len - (need + idx) + 1;
             need -= 1;
-            cmax = 0;
         }
 
         let mut powr = 12;
@@ -87,7 +74,6 @@ impl FromStr for Bank {
             .for_each(|c| batteries.push(c.to_digit(10).unwrap() as usize));
 
         Ok(Bank {
-            idxs: (0, 0),
             batteries,
             joltage: 0,
         })
@@ -99,11 +85,7 @@ impl fmt::Display for Bank {
         self.batteries.iter().for_each(|b| {
             write!(f, "{b}").unwrap();
         });
-        write!(
-            f,
-            " | {} and {} | {}",
-            self.idxs.0, self.idxs.1, self.joltage
-        )
+        write!(f, ", joltage: {}", self.joltage)
     }
 }
 
