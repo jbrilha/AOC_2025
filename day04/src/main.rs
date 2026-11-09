@@ -67,11 +67,9 @@ impl Grid {
         }
 
         if !remove_at.is_empty() {
-            remove_at.iter().for_each(|(row, col)| {
-                let row = self.paper.get_mut(*row).unwrap();
-                row.remove(*col);
-                row.insert(*col, false);
-            });
+            remove_at
+                .iter()
+                .for_each(|(row, col)| self.paper[*row][*col] = false);
 
             self.find_paper_rolls_part2();
         }
