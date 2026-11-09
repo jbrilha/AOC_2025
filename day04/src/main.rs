@@ -16,12 +16,9 @@ struct Grid {
 impl Grid {
     fn find_paper_rolls_part1(&mut self) {
         for i in 0..self.paper.len() {
-            let row = self.paper.get(i).unwrap();
-            for j in 0..row.len() {
-                if *row.get(j).unwrap() {
-                    if self.can_reach(i, j) {
-                        self.count += 1;
-                    }
+            for j in 0..self.paper[i].len() {
+                if self.paper[i][j] && self.can_reach(i, j) {
+                    self.count += 1;
                 }
             }
         }
@@ -53,24 +50,18 @@ impl Grid {
     }
 
     fn find_paper_rolls_part2(&mut self) {
-        let mut remove_at = vec![];
+        let mut removed = false;
         for i in 0..self.paper.len() {
-            let row = self.paper.get(i).unwrap();
-            for j in 0..row.len() {
-                if *row.get(j).unwrap() {
-                    if self.can_reach(i, j) {
-                        self.count += 1;
-                        remove_at.push((i, j));
-                    }
+            for j in 0..self.paper[i].len() {
+                if self.paper[i][j] && self.can_reach(i, j) {
+                    self.count += 1;
+                    self.paper[i][j] = false;
+                    removed = true;
                 }
             }
         }
 
-        if !remove_at.is_empty() {
-            remove_at
-                .iter()
-                .for_each(|(row, col)| self.paper[*row][*col] = false);
-
+        if removed {
             self.find_paper_rolls_part2();
         }
     }
