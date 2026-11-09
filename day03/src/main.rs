@@ -10,12 +10,12 @@ use tracing_subscriber::EnvFilter;
 
 struct Bank {
     pub idxs: (usize, usize),
-    pub batteries: Vec<u32>,
-    pub joltage: u32,
+    pub batteries: Vec<usize>,
+    pub joltage: usize,
 }
 
 impl Bank {
-    fn calc_joltage(&mut self) {
+    fn calc_joltage_part1(&mut self) {
         let len = self.batteries.len();
 
         let maxl = self
@@ -25,19 +25,55 @@ impl Bank {
             .enumerate()
             .max_by_key(|&(idx, val)| if idx > 0 { *val } else { 0 })
             .unwrap();
-        error!("idx: {}, val: {}", maxl.0, maxl.1);
 
-        let maxr = self
-            .batteries
-            .iter()
-            .skip(len - maxl.0)
-            .enumerate()
-            .max_by_key(|&(_idx, val)| val)
-            .unwrap();
+        let maxr = self.batteries.iter().skip(len - maxl.0).max().unwrap();
 
-        error!("idx: {}, val: {}", maxr.0, maxr.1);
+        self.joltage = maxl.1 * 10 + maxr;
+    }
 
-        self.joltage = maxl.1 * 10 + maxr.1;
+    fn calc_joltage_part2(&mut self) {
+        self.joltage = 0;
+        let len = self.batteries.len();
+
+        let mut idxs: Vec<usize> = vec![];
+        let mut vals: Vec<usize> = vec![];
+
+        let mut need = 12;
+        let (mut cidx, mut cmax) = (len, 0);
+
+        let mut skip = 0;
+        while need > 0 {
+            let (idx, max) = self
+                .batteries
+                .iter()
+                .skip(skip)
+                .rev()
+                .skip(need - 1)
+                .enumerate()
+                .max_by_key(|&(idx, val)| {
+                    if idx < cidx || *val >= cmax {
+                        cmax = *val;
+                        cidx = idx;
+                        *val
+                    } else {
+                        0
+                    }
+                })
+                .unwrap();
+
+            idxs.push(len - (idx + need));
+            vals.push((*max) as usize);
+
+            skip = len - (need + cidx) + 1;
+            need -= 1;
+            cmax = 0;
+        }
+
+        let mut powr = 12;
+        vals.iter().for_each(|v| {
+            powr -= 1;
+            self.joltage += (*v) as usize * 10_usize.pow(powr);
+        });
     }
 }
 
@@ -45,10 +81,10 @@ impl FromStr for Bank {
     type Err = ();
 
     fn from_str(input: &str) -> Result<Bank, Self::Err> {
-        let mut batteries = vec![];
+        let mut batteries: Vec<usize> = vec![];
         input
             .chars()
-            .for_each(|c| batteries.push(c.to_digit(10).unwrap()));
+            .for_each(|c| batteries.push(c.to_digit(10).unwrap() as usize));
 
         Ok(Bank {
             idxs: (0, 0),
@@ -93,11 +129,17 @@ fn main() {
 
     let mut sum = 0;
     banks.iter_mut().for_each(|r| {
-        r.calc_joltage();
+        r.calc_joltage_part1();
         sum += r.joltage;
-        info!("{r}");
     });
     info!("part1: {sum}");
+
+    let mut sum = 0;
+    banks.iter_mut().for_each(|r| {
+        r.calc_joltage_part2();
+        sum += r.joltage;
+    });
+    info!("part2: {sum}");
 }
 
 #[cfg(test)]
