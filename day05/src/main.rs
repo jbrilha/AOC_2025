@@ -1,4 +1,5 @@
 use std::{
+    cmp::max,
     env,
     fmt::{self},
     fs::read_to_string,
@@ -41,7 +42,6 @@ impl Database {
         self.ranges.sort_by(|l, r| l.cmp(r));
 
         let mut sets: Vec<(usize, usize)> = vec![];
-        let mut joined = false;
 
         self.ranges.iter().for_each(|&(l, r)| {
             if sets.is_empty() {
@@ -49,26 +49,12 @@ impl Database {
                 return;
             }
 
-            sets.iter_mut().for_each(|(ll, rr)| {
-                if l < *ll && r >= *ll {
-                    *ll = l;
-                    joined = true;
-                }
-
-                if r > *rr && l <= *rr {
-                    *rr = r;
-                    joined = true;
-                }
-
-                if l >= *ll && r <= *rr {
-                    joined = true;
-                }
-            });
-
-            if !joined {
+            let last = sets.last_mut().unwrap();
+            if (r > last.1 && l <= last.1) || (l >= last.0 && r <= last.1) {
+                last.1 = max(r, last.1);
+            } else {
                 sets.push((l, r));
             }
-            joined = false;
         });
 
         sets.iter().for_each(|(l, r)| {
