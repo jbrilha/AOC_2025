@@ -39,19 +39,17 @@ impl Database {
     fn find_fresh_part2(&mut self) -> usize {
         let mut fresh = 0;
 
-        self.ranges.sort_by(|l, r| l.cmp(r));
+        self.ranges.sort_unstable();
 
         let mut sets: Vec<(usize, usize)> = vec![];
 
         self.ranges.iter().for_each(|&(l, r)| {
-            if sets.is_empty() {
-                sets.push((l, r));
-                return;
-            }
-
-            let last = sets.last_mut().unwrap();
-            if (r > last.1 && l <= last.1) || (l >= last.0 && r <= last.1) {
-                last.1 = max(r, last.1);
+            if let Some(last) = sets.last_mut() {
+                if l <= last.1 {
+                    last.1 = max(r, last.1);
+                } else {
+                    sets.push((l, r));
+                }
             } else {
                 sets.push((l, r));
             }
