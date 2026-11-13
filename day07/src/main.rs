@@ -3,19 +3,10 @@ use std::{
     env,
     fmt::{self},
     fs::read_to_string,
-    hash::Hash,
-    ops::{Add, Mul},
-    str::FromStr,
 };
 
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
-
-#[derive(Debug, Clone, Copy)]
-enum Operation {
-    Sum,
-    Mul,
-}
 
 struct Manifold {
     pub start: (usize, usize),
